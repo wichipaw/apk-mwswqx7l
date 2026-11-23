@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0785ed">
+<title>Flapi Vir Co</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,Arial;background:#0785ed;color:#fff;touch-action:manipulation}
+#app{height:100%;display:flex;flex-direction:column;background:linear-gradient(#087be8,#8beaff 70%,#159b58)}
+header{height:58px;display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:#0756b8;text-shadow:2px 2px #12365c;font-weight:1000}
+.brand{font-size:clamp(15px,4.5vw,23px);color:#ffdc26}.brand span{color:#7dff38}.stat{text-align:center;font-size:10px}.stat b{display:block;font-size:20px}
+#game{position:relative;flex:1;min-height:0}canvas{width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:#001c3b66;padding:18px}.hide{display:none!important}
+.panel{width:min(92%,370px);text-align:center;padding:22px 18px;border:4px solid white;border-radius:22px;background:linear-gradient(145deg,#1675e8,#073a8c);box-shadow:0 8px 0 #06295d}
+.logo{font-size:58px}h1{font-size:clamp(31px,9vw,43px);margin:3px 0 10px;color:#ffdf28;text-shadow:3px 3px #693900}h1 span{color:#7dff38}p{font-weight:700}
+button{width:100%;border:0;border-radius:14px;padding:15px;margin:8px 0;background:linear-gradient(#a5ff3b,#37c900);box-shadow:0 6px #187800;color:#123d08;font-size:21px;font-weight:1000}
+button:active{transform:translateY(3px);box-shadow:0 3px #187800}.sub{background:linear-gradient(#d8eaff,#80b8f0);box-shadow:0 5px #35669a;color:#12345b;font-size:16px}
+#pause{position:absolute;top:10px;left:10px;width:43px;padding:5px;margin:0;background:#fff;color:#064a92;box-shadow:0 4px #23558b;font-size:23px}
+#paused{position:absolute;inset:0;display:grid;place-items:center;background:#001b4bbb;font-size:22px;font-weight:1000;text-align:center}
+.hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;font-weight:1000;text-shadow:2px 2px #064078;pointer-events:none}
+footer{height:22px;text-align:center;background:#0756a5;font-size:10px;font-weight:900;letter-spacing:2px;padding:4px}
+</style>
+</head>
+<body>
+<div id="app">
+<header><div class="brand">👑 FLAPI <span>VIR CO</span></div><div class="stat">PUNTAJE<b id="score">0</b></div><div class="stat">🏆 RÉCORD<b id="record">0</b></div></header>
+<main id="game"><canvas id="c"></canvas>
+<section id="menu" class="overlay"><div class="panel"><div class="logo">🐤</div><h1>FLAPI <span>VIR CO</span></h1><p>¡Vuela, esquiva y supera tu récord!</p><button id="play">▶ JUGAR</button><small>Toca la pantalla o pulsa ESPACIO para volar</small></div></section>
+<section id="over" class="overlay hide"><div class="panel"><div class="logo">💥🐤</div><h1>¡FIN DEL JUEGO!</h1><p>Tu puntuación: <b id="final">0</b></p><button id="again">↻ VOLVER A JUGAR</button><button class="sub" id="home">MENÚ</button></div></section>
+<button id="pause" class="hide">Ⅱ</button><div id="paused" class="hide">PAUSA — toca para continuar</div><div class="hint" id="hint">TOCA PARA VOLAR ↑</div>
+</main><footer>FLAPI VIR CO · NIVEL 1</footer></div>
+<script>
+(()=>{const c=document.getElementById('c'),x=c.getContext('2d'),$=id=>document.getElementById(id);let W,H,d=1,state='menu',paused=false,bird,obstacles=[],score=0,record=0,tick=0,last=0;
+try{record=+(localStorage.getItem('flapiRecord')||0)}catch(e){}$('record').textContent=record;
+function size(){let r=c.getBoundingClientRect();d=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;c.width=W*d;c.height=H*d;x.setTransform(d,0,0,d,0,0)}new ResizeObserver(size).observe(c);size();
+function reset(){score=0;tick=0;obstacles=[];bird={x:W*.27,y:H*.43,v:0,r:17};$('score').textContent=0}
+function start(){reset();state='play';paused=false;$('menu').classList.add('hide');$('over').classList.add('hide');$('pause').classList.remove('hide');$('paused').classList.add('hide');$('hint').classList.remove('hide');fly()}
+function fly(){if(state==='play'&&!paused)bird.v=-7.1}
+function finish(){state='over';$('pause').classList.add('hide');$('final').textContent=score;$('over').classList.remove('hide');$('hint').classList.add('hide')}
+function pipe(){let gap=Math.max(145,Math.min(180,H*.27)),top=55+Math.random()*(H-gap-125);obstacles.push({x:W+30,top,gap,passed:false})}
+function background(){let g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0785f6');g.addColorStop(.7,'#9beaff');g.addColorStop(1,'#13a9d8');x.fillStyle=g;x.fillRect(0,0,W,H);
+x.fillStyle='#fff';for(let i=0;i<7;i++){let a=(i*160-tick*.3)%(W+120);if(a<0)a+=W+120;let xx=a-50,yy=H*(.13+i%3*.1);x.beginPath();x.arc(xx,yy,18,0,7);x.arc(xx+22,yy-9,24,0,7);x.arc(xx+47,yy,18,0,7);x.fill()}
+x.fillStyle='#6aa8cf';for(let i=0;i<15;i++){let xx=(i*58-tick*.45)%(W+60);if(xx<0)xx+=W+60;let bh=40+(i*29%65);x.fillRect(xx-20,H*.75-bh,28,bh)}
+x.fillStyle='#159b58';x.fillRect(0,H*.75,W,H*.1);for(let i=0;i<22;i++){let xx=(i*44-tick*.7)%(W+40);if(xx<0)xx+=W+40;x.fillStyle=i%2?'#28c65c':'#5add40';x.beginPath();x.arc(xx,H*.76,17,0,7);x.fill()}
+x.fillStyle='#14bce9';x.fillRect(0,H*.85,W,H*.15);x.fillStyle='#a5f7ff';for(let i=0;i<8;i++)x.fillRect((i*91-tick)%W,H*.9+i%2*9,38,3)}
+function drawPipe(p){let pw=Math.max(55,W*.14),cap=17,g=x.createLinearGradient(p.x,0,p.x+pw,0);g.addColorStop(0,'#087b27');g.addColorStop(.35,'#28df32');g.addColorStop(.7,'#a2ff28');g.addColorStop(1,'#087b27');x.fillStyle=g;x.strokeStyle='#07551e';x.lineWidth=4;let bottom=p.top+p.gap;
+x.fillRect(p.x,0,pw,p.top-cap);x.strokeRect(p.x,0,pw,p.top-cap);x.fillRect(p.x-6,p.top-cap,pw+12,cap);x.strokeRect(p.x-6,p.top-cap,pw+12,cap);
+x.fillRect(p.x,bottom+cap,pw,H-bottom-cap);x.strokeRect(p.x,bottom+cap,pw,H-bottom-cap);x.fillRect(p.x-6,bottom,pw+12,cap);x.strokeRect(p.x-6,bottom,pw+12,cap)}
+function drawBird(){x.save();x.translate(bird.x,bird.y);x.rotate(Math.max(-.4,Math.min(.65,bird.v*.05)));x.fillStyle='#ffcf19';x.strokeStyle='#452700';x.lineWidth=3;x.beginPath();x.ellipse(0,0,bird.r*1.15,bird.r*.85,0,0,7);x.fill();x.stroke();x.fillStyle='#fff';x.beginPath();x.arc(8,-5,7,0,7);x.fill();x.stroke();x.fillStyle='#111';x.beginPath();x.arc(10,-5,2.5,0,7);x.fill();x.fillStyle='#ff5b20';x.beginPath();x.moveTo(12,1);x.lineTo(27,5);x.lineTo(12,9);x.fill();x.stroke();x.fillStyle='#e99a00';x.beginPath();x.ellipse(-8,7,8,4,-.4,0,7);x.fill();x.restore()}
+function update(dt){if(state!=='play'||paused)return;tick+=dt;bird.v+=.00055*dt*9;bird.y+=bird.v*dt*.06;if(tick>1250){pipe();tick=0}let speed=Math.max(.17,W*.00045);for(let p of obstacles){p.x-=speed*dt;if(!p.passed&&p.x+W*.14<bird.x){p.passed=true;score++;$('score').textContent=score;if(score>record){record=score;$('record').textContent=record;try{localStorage.setItem('flapiRecord',record)}catch(e){}}}let hit=bird.x+bird.r>p.x-5&&bird.x-bird.r<p.x+W*.14+5;if(hit&&(bird.y-bird.r<p.top||bird.y+bird.r>p.top+p.gap))finish()}obstacles=obstacles.filter(p=>p.x>-W*.2);if(bird.y+bird.r>H*.85||bird.y-bird.r<0)finish()}
+function render(){background();obstacles.forEach(drawPipe);if(bird)drawBird();x.fillStyle='#56df20';x.fillRect(0,H*.96,W,H*.04);x.fillStyle='#a65b22';x.fillRect(0,H*.985,W,H*.015);x.fillStyle='#c1ff50';for(let i=0;i<W;i+=26)x.fillRect(i,H*.955,13,5)}
+function loop(t){let dt=Math.min(32,t-(last||t));last=t;update(dt);render();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+$('play').onclick=start;$('again').onclick=start;$('home').onclick=()=>{state='menu';$('over').classList.add('hide');$('menu').classList.remove('hide')};
+c.addEventListener('pointerdown',()=>{if(state==='play'){if(paused){paused=false;$('paused').classList.add('hide')}else fly()}});
+$('pause').onclick=()=>{if(state==='play'){paused=!paused;$('paused').classList.toggle('hide',!paused)}};$('paused').onclick=()=>{paused=false;$('paused').classList.add('hide')};
+addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();if(state==='menu')start();else fly()}if(e.code==='Escape'&&state==='play'){$('pause').click()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'){paused=true;$('paused').classList.remove('hide')}});
+})();
+</script></body></html>
